@@ -5,67 +5,115 @@
 #4. click on "open tab" button, a new tab will be opened, after that switch to the main page and continue on the other script.
 #5. Select option3 in dropdown.
 
-from playwright.sync_api import sync_playwright
+import os
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 
-def test_practice():
+def test_newTabWindow():
+
+    browser_name = os.getenv("BROWSER", "chromium")
 
     with sync_playwright() as p:
 
-        # Launch browser maximized
-        browser = p.chromium.launch(
-            headless=False,
+        print(f"\nRunning test on browser: {browser_name}")
+
+        browser = getattr(p, browser_name).launch(
+            headless=True,
             args=["--start-maximized"]
         )
 
-        # Remove viewport restriction
-        context = browser.new_context(no_viewport=True)
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
         page = context.new_page()
 
         page.set_default_timeout(60000)
 
-        # 1️⃣ Open website
-        page.goto(
-            "https://rahulshettyacademy.com/AutomationPractice/",
-            timeout=120000,
-            wait_until="domcontentloaded"
-        )
+        try:
+            # STEP 1: Open website
+            print("\n[STEP 1] Opening website...")
 
-        # 2️⃣ Click Open Window (new window opens)
-        with page.expect_popup() as new_window:
-            page.click("#openwindow")
+            page.goto(
+                "https://rahulshettyacademy.com/AutomationPractice/",
+                timeout=120000,
+                wait_until="domcontentloaded"
+            )
 
-        window = new_window.value
-        window.wait_for_load_state()
+            print("✔ Website opened successfully")
 
-        print("New window opened")
+            # STEP 2: Click Open Window
+            print("[STEP 2] Clicking 'Open Window'...")
 
-        # Close new window
-        window.close()
+            open_window_btn = page.locator("#openwindow")
+            open_window_btn.wait_for(state="visible")
 
-        # Switch back to main page
-        page.bring_to_front()
+            with page.expect_popup() as new_window:
+                open_window_btn.click()
 
-        # 3️⃣ Click Open Tab (new tab opens)
-        with context.expect_page() as new_tab:
-            page.click("#opentab")
+            window = new_window.value
+            window.wait_for_load_state("domcontentloaded")
 
-        tab = new_tab.value
-        tab.wait_for_load_state()
+            print("✔ New window opened successfully")
 
-        print("New tab opened")
+            # Close new window
+            print("[STEP 3] Closing new window...")
+            window.close()
+            print("✔ New window closed")
 
-        # Close new tab
-        tab.close()
+            # Switch back to main page
+            page.bring_to_front()
+            print("✔ Switched back to main page")
 
-        # Switch back to main page
-        page.bring_to_front()
+            # STEP 4: Click Open Tab
+            print("[STEP 4] Clicking 'Open Tab'...")
 
-        # 4️⃣ Select option3 in dropdown
-        page.select_option("#dropdown-class-example", "option3")
+            open_tab_btn = page.locator("#opentab")
+            open_tab_btn.wait_for(state="visible")
 
-        print("Dropdown Option3 selected")
+            with context.expect_page() as new_tab:
+                open_tab_btn.click()
 
-        page.wait_for_timeout(3000)
+            tab = new_tab.value
+            tab.wait_for_load_state("domcontentloaded")
 
-        browser.close()
+            print("✔ New tab opened successfully")
+
+            # Close new tab
+            print("[STEP 5] Closing new tab...")
+            tab.close()
+            print("✔ New tab closed")
+
+            # Switch back to main page
+            page.bring_to_front()
+            print("✔ Switched back to main page")
+
+            # STEP 6: Select option3 in dropdown
+            print("[STEP 6] Selecting Option3 from dropdown...")
+
+            dropdown = page.locator("#dropdown-class-example")
+            dropdown.wait_for(state="visible")
+            dropdown.select_option("option3")
+
+            print("✔ Dropdown Option3 selected successfully")
+
+            page.wait_for_timeout(2000)
+
+        except PlaywrightTimeoutError as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL - TIMEOUT] Error: {e}")
+            raise
+
+        except Exception as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL] Error: {e}")
+            raise
+
+        finally:
+            browser.close()
+            print(f"[TEARDOWN] Browser closed for {browser_name}.")

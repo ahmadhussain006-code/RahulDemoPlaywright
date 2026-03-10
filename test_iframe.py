@@ -1,17 +1,31 @@
+#Think and act like you are a senior software tester. Write a script to automate this website on the PyCharm framework using Playwright with Python.
+# 1. Open this website- https://rahulshettyacademy.com/AutomationPractice/
+# 2. Maximise the window
+# 3. Below the "Web Table Fixed header" you will see a chart, on the chart a side bar is showing, scroll down the side bar.
+# 4. At the middle of the page to the left corner you will see a text "iFrame Example" > below text you will see a iframe > scroll down the side bar.
+# 5. Click on the "view all courses" button.
+# 6. write "Test" in the "search product names" field.
+# 7. Click on the dropdown button where field name is "All Authors" and select "Raymond".
+# 8. Click on the dropdown button where field name is "Recommended" and select "Name(A-Z)".
+# 9. This text should be shown "No products match your current filters". Print this text.
+
+
 import time
 import pytest
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 
 @pytest.mark.parametrize("browser_name", ["chromium", "firefox", "webkit"])
-def test_automation_practice(browser_name):
+def test_iframe(browser_name):
     with sync_playwright() as p:
         browser = getattr(p, browser_name).launch(
             headless=True,
             args=["--start-maximized"]
         )
 
-        context = browser.new_context(viewport={"width": 1920, "height": 1080})
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
         page = context.new_page()
         page.set_default_timeout(60000)
 
@@ -34,30 +48,32 @@ def test_automation_practice(browser_name):
             # STEP 3: Scroll chart sidebar below 'Web Table Fixed Header'
             print("[STEP 3] Scrolling chart sidebar below 'Web Table Fixed Header'...")
             page.locator("text=Web Table Fixed header").scroll_into_view_if_needed()
+
             table_sidebar = page.locator(".tableFixHead")
             table_sidebar.wait_for(state="visible")
             table_sidebar.evaluate("(el) => { el.scrollTop = el.scrollHeight; }")
             time.sleep(1)
+
             print("         ✔ Chart sidebar scrolled.")
 
             # STEP 4: Scroll to iFrame Example and scroll inside iframe
             print("[STEP 4] Scrolling to 'iFrame Example' and scrolling iframe sidebar...")
             page.evaluate("""
-                const allEls = Array.from(document.querySelectorAll('*'));
-                const target = allEls.find(
-                    el => el.childElementCount === 0 &&
-                    el.innerText && el.innerText.trim() === 'iFrame Example'
-                );
-                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            """)
+                    const allEls = Array.from(document.querySelectorAll('*'));
+                    const target = allEls.find(
+                        el => el.childElementCount === 0 &&
+                        el.innerText && el.innerText.trim() === 'iFrame Example'
+                    );
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                """)
             time.sleep(1.5)
 
             page.wait_for_selector("iframe#courses-iframe", timeout=15000)
 
             courses_frame = (
-                page.frame(name="courses-iframe") or
-                next((f for f in page.frames if "courses-iframe" in (f.name or "")), None) or
-                next((f for f in page.frames if f.url != page.url and f != page.main_frame), None)
+                    page.frame(name="courses-iframe") or
+                    next((f for f in page.frames if "courses-iframe" in (f.name or "")), None) or
+                    next((f for f in page.frames if f.url != page.url and f != page.main_frame), None)
             )
 
             if courses_frame:
@@ -130,6 +146,7 @@ def test_automation_practice(browser_name):
             print(f'\n   >>> Message displayed: "{result_text}"\n')
             assert "No products match your current filters" in result_text, \
                 f"Expected message not found! Got: '{result_text}'"
+
             print("         ✔ Assertion PASSED — Test Complete.\n")
 
         except PlaywrightTimeoutError as e:

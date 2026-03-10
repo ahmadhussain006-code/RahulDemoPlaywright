@@ -4,56 +4,101 @@
 #3. Click on the text link "Get Shortlisted...." right side on the top.> a new tab will be opened, after that switch to the main page and continue on the other script.
 #4. Select option3 in dropdown.
 
-from playwright.sync_api import sync_playwright
+import os
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 
-def test_practice():
+def test_clickTestlink():
+
+    # Browser will come from GitHub Actions matrix
+    browser_name = os.getenv("BROWSER", "chromium")
 
     with sync_playwright() as p:
 
-        # Launch browser maximized
-        browser = p.chromium.launch(
-            headless=False,
+        print(f"\nRunning test on browser: {browser_name}")
+
+        browser = getattr(p, browser_name).launch(
+            headless=True,
             args=["--start-maximized"]
         )
 
-        context = browser.new_context(no_viewport=True)
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
         page = context.new_page()
 
         page.set_default_timeout(60000)
 
-        # Open website
-        page.goto(
-            "https://rahulshettyacademy.com/AutomationPractice/",
-            timeout=120000,
-            wait_until="domcontentloaded"
-        )
+        try:
+            # STEP 1: Open website
+            print("\n[STEP 1] Opening website...")
 
-        # Scroll to the top (important fix)
-        page.evaluate("window.scrollTo(0,0)")
+            page.goto(
+                "https://rahulshettyacademy.com/AutomationPractice/",
+                timeout=120000,
+                wait_until="domcontentloaded"
+            )
 
-        # Click the top-right text link
-        link = page.get_by_text("Get Shortlisted by Recruiters - Take QA Skill Assessments on TechSmartHire")
+            print("✔ Website opened successfully")
 
-        with context.expect_page() as new_tab:
-            link.click()
+            # STEP 2: Scroll to top
+            print("[STEP 2] Scrolling to top...")
+            page.evaluate("window.scrollTo(0, 0)")
+            print("✔ Scrolled to top")
 
-        tab = new_tab.value
-        tab.wait_for_load_state()
+            # STEP 3: Click the top-right text link and handle new tab
+            print("[STEP 3] Clicking recruiter link and opening new tab...")
 
-        print("New tab opened")
+            link = page.get_by_text(
+                "Get Shortlisted by Recruiters - Take QA Skill Assessments on TechSmartHire"
+            )
+            link.wait_for(state="visible")
 
-        # Close the new tab
-        tab.close()
+            with context.expect_page() as new_tab:
+                link.click()
 
-        # Switch back to main page
-        page.bring_to_front()
+            tab = new_tab.value
+            tab.wait_for_load_state("domcontentloaded")
 
-        # Select Option3 in dropdown
-        page.select_option("#dropdown-class-example", "option3")
+            print("✔ New tab opened successfully")
 
-        print("Dropdown Option3 selected")
+            # STEP 4: Close new tab
+            print("[STEP 4] Closing new tab...")
+            tab.close()
+            print("✔ New tab closed")
 
-        page.wait_for_timeout(3000)
+            # STEP 5: Switch back to main page
+            print("[STEP 5] Switching back to main page...")
+            page.bring_to_front()
+            print("✔ Switched back to main page")
 
-        browser.close()
+            # STEP 6: Select Option3 in dropdown
+            print("[STEP 6] Selecting Option3 from dropdown...")
+
+            dropdown = page.locator("#dropdown-class-example")
+            dropdown.wait_for(state="visible")
+            dropdown.select_option("option3")
+
+            print("✔ Dropdown Option3 selected successfully")
+
+            page.wait_for_timeout(2000)
+
+        except PlaywrightTimeoutError as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL - TIMEOUT] Error: {e}")
+            raise
+
+        except Exception as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL] Error: {e}")
+            raise
+
+        finally:
+            browser.close()
+            print(f"[TEARDOWN] Browser closed for {browser_name}.")

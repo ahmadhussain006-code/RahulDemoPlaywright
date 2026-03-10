@@ -4,48 +4,88 @@
 #3. Below the "Web Table Fixed header" you will see a chart, on the chart, a side bar is showing, scroll down the side bar.
 #4. Select option3 in the dropdown.
 
-from playwright.sync_api import sync_playwright
+import os
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 
-def test_practice():
+def test_scrollSliderBar():
+
+    # Browser will come from GitHub Actions matrix
+    browser_name = os.getenv("BROWSER", "chromium")
 
     with sync_playwright() as p:
 
-        # Launch browser maximized
-        browser = p.chromium.launch(
-            headless=False,
+        print(f"\nRunning test on browser: {browser_name}")
+
+        browser = getattr(p, browser_name).launch(
+            headless=True,
             args=["--start-maximized"]
         )
 
-        # Remove viewport restriction
-        context = browser.new_context(no_viewport=True)
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
         page = context.new_page()
 
         page.set_default_timeout(60000)
 
-        # 1️⃣ Open website
-        page.goto(
-            "https://rahulshettyacademy.com/AutomationPractice/",
-            timeout=120000,
-            wait_until="domcontentloaded"
-        )
+        try:
+            # STEP 1: Open website
+            print("\n[STEP 1] Opening website...")
 
-        # 2️⃣ Scroll to Web Table Fixed Header section
-        page.locator("text=Web Table Fixed Header").scroll_into_view_if_needed()
+            page.goto(
+                "https://rahulshettyacademy.com/AutomationPractice/",
+                timeout=120000,
+                wait_until="domcontentloaded"
+            )
 
-        # 3️⃣ Scroll the table scrollbar
-        table = page.locator(".tableFixHead")
+            print("✔ Website opened successfully")
 
-        # Scroll down inside the table
-        table.evaluate("el => el.scrollTop = el.scrollHeight")
+            # STEP 2: Scroll to Web Table Fixed Header section
+            print("[STEP 2] Scrolling to 'Web Table Fixed Header' section...")
 
-        print("Table scrollbar scrolled")
+            header = page.locator("text=Web Table Fixed Header")
+            header.wait_for(state="visible")
+            header.scroll_into_view_if_needed()
 
-        # 4️⃣ Select Option3 in dropdown
-        page.select_option("#dropdown-class-example", "option3")
+            print("✔ Reached Web Table Fixed Header section")
 
-        print("Dropdown Option3 selected")
+            # STEP 3: Scroll the table scrollbar
+            print("[STEP 3] Scrolling table scrollbar...")
 
-        page.wait_for_timeout(3000)
+            table = page.locator(".tableFixHead")
+            table.wait_for(state="visible")
+            table.evaluate("(el) => { el.scrollTop = el.scrollHeight; }")
 
-        browser.close()
+            print("✔ Table scrollbar scrolled successfully")
+
+            # STEP 4: Select Option3 in dropdown
+            print("[STEP 4] Selecting Option3 from dropdown...")
+
+            dropdown = page.locator("#dropdown-class-example")
+            dropdown.wait_for(state="visible")
+            dropdown.select_option("option3")
+
+            print("✔ Dropdown Option3 selected successfully")
+
+            page.wait_for_timeout(2000)
+
+        except PlaywrightTimeoutError as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL - TIMEOUT] Error: {e}")
+            raise
+
+        except Exception as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL] Error: {e}")
+            raise
+
+        finally:
+            browser.close()
+            print(f"[TEARDOWN] Browser closed for {browser_name}.")

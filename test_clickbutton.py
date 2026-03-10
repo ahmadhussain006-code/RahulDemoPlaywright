@@ -1,36 +1,76 @@
-from playwright.sync_api import sync_playwright
+import os
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 
-def test_practice():
+def test_clickbutton():
+
+    # Browser will come from GitHub Actions matrix
+    browser_name = os.getenv("BROWSER", "chromium")
 
     with sync_playwright() as p:
 
-        # Launch browser in maximized mode
-        browser = p.chromium.launch(
-            headless=False,
+        print(f"\nRunning test on browser: {browser_name}")
+
+        browser = getattr(p, browser_name).launch(
+            headless=True,
             args=["--start-maximized"]
         )
 
-        # Create context without viewport restriction
-        context = browser.new_context(no_viewport=True)
-        page = context.new_page()
-
-        # Increase default timeout
-        page.set_default_timeout(60000)
-
-        # Open website
-        page.goto(
-            "https://rahulshettyacademy.com/AutomationPractice/",
-            timeout=120000,
-            wait_until="domcontentloaded"
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
         )
 
-        # Select Radio Button - Radio3
-        page.check("input[value='radio3']")
+        page = context.new_page()
 
-        print("Radio3 selected successfully")
+        page.set_default_timeout(60000)
 
-        # Wait few seconds to see result
-        page.wait_for_timeout(3000)
+        try:
+            # STEP 1: Open website
+            print("\n[STEP 1] Opening website...")
 
-        browser.close()
+            page.goto(
+                "https://rahulshettyacademy.com/AutomationPractice/",
+                timeout=120000,
+                wait_until="domcontentloaded"
+            )
+
+            print("✔ Website opened successfully")
+
+            # STEP 2: Select Radio3
+            print("[STEP 2] Selecting Radio3...")
+
+            radio_btn = page.locator("input[value='radio3']")
+            radio_btn.wait_for(state="visible")
+
+            radio_btn.check()
+
+            print("✔ Radio3 selected successfully")
+
+            # Small wait for stability
+            page.wait_for_timeout(2000)
+
+        except PlaywrightTimeoutError as e:
+
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+
+            print(f"\n[FAIL - TIMEOUT] Error: {e}")
+            raise
+
+        except Exception as e:
+
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+
+            print(f"\n[FAIL] Error: {e}")
+            raise
+
+        finally:
+
+            browser.close()
+
+            print(f"[TEARDOWN] Browser closed for {browser_name}.")

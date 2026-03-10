@@ -6,51 +6,92 @@
 #5. click on the "confirm" button  > a pop will appear from the top of the page > click on the "ok" button.
 
 
-from playwright.sync_api import sync_playwright
+import os
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 
-def test_practice():
+def test_alertPopup():
+
+    # Browser will come from GitHub Actions matrix
+    browser_name = os.getenv("BROWSER", "chromium")
 
     with sync_playwright() as p:
 
-        # Launch browser maximized
-        browser = p.chromium.launch(
-            headless=False,
+        print(f"\nRunning test on browser: {browser_name}")
+
+        browser = getattr(p, browser_name).launch(
+            headless=True,
             args=["--start-maximized"]
         )
 
-        # Remove viewport restriction
-        context = browser.new_context(no_viewport=True)
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
         page = context.new_page()
 
         page.set_default_timeout(60000)
 
-        # 1️⃣ Open website
-        page.goto(
-            "https://rahulshettyacademy.com/AutomationPractice/",
-            timeout=120000,
-            wait_until="domcontentloaded"
-        )
+        try:
+            # STEP 1: Open website
+            print("\n[STEP 1] Opening website...")
 
-        # Handle Alert popup
-        page.once("dialog", lambda dialog: dialog.accept())
+            page.goto(
+                "https://rahulshettyacademy.com/AutomationPractice/",
+                timeout=120000,
+                wait_until="domcontentloaded"
+            )
 
-        # 2️⃣ Click Alert button
-        page.click("#alertbtn")
+            print("✔ Website opened successfully")
 
-        print("Alert handled successfully")
+            # STEP 2: Handle alert popup
+            print("[STEP 2] Handling alert popup...")
 
-        # 3️⃣ Enter name
-        page.fill("#name", "Hussain text")
+            page.once("dialog", lambda dialog: dialog.accept())
 
-        # Handle Confirm popup
-        page.once("dialog", lambda dialog: dialog.accept())
+            alert_btn = page.locator("#alertbtn")
+            alert_btn.wait_for(state="visible")
+            alert_btn.click()
 
-        # 4️⃣ Click Confirm button
-        page.click("#confirmbtn")
+            print("✔ Alert handled successfully")
 
-        print("Confirm popup handled successfully")
+            # STEP 3: Enter name
+            print("[STEP 3] Entering name in input field...")
 
-        page.wait_for_timeout(3000)
+            name_field = page.locator("#name")
+            name_field.wait_for(state="visible")
+            name_field.fill("Hussain text")
 
-        browser.close()
+            print("✔ Name entered successfully")
+
+            # STEP 4: Handle confirm popup
+            print("[STEP 4] Handling confirm popup...")
+
+            page.once("dialog", lambda dialog: dialog.accept())
+
+            confirm_btn = page.locator("#confirmbtn")
+            confirm_btn.wait_for(state="visible")
+            confirm_btn.click()
+
+            print("✔ Confirm popup handled successfully")
+
+            page.wait_for_timeout(2000)
+
+        except PlaywrightTimeoutError as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL - TIMEOUT] Error: {e}")
+            raise
+
+        except Exception as e:
+            page.screenshot(
+                path=f"failure_{browser_name}.png",
+                full_page=True
+            )
+            print(f"\n[FAIL] Error: {e}")
+            raise
+
+        finally:
+            browser.close()
+            print(f"[TEARDOWN] Browser closed for {browser_name}.")
