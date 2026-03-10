@@ -1,0 +1,59 @@
+name: Rahul Demo Playwright Cross Browser Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  cross-browser-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium firefox webkit
+
+      - name: Run tests for ${{ matrix.browser }} with HTML report
+        run: |
+          pytest test_iframe.py \
+            -s -v \
+            -k test_automation_practice \
+            --browser-name=${{ matrix.browser }} \
+            --html=reports/report-${{ matrix.browser }}.html \
+            --self-contained-html
+        continue-on-error: false
+
+      - name: Upload HTML report for ${{ matrix.browser }}
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-${{ matrix.browser }}
+          path: reports/report-${{ matrix.browser }}.html
+          if-no-files-found: ignore
+
+      - name: Upload screenshot for ${{ matrix.browser }} if failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshot-${{ matrix.browser }}
+          path: failure_${{ matrix.browser }}.png
+          if-no-files-found: ignore
