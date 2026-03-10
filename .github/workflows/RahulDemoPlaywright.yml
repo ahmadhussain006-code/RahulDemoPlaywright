@@ -38,7 +38,7 @@ jobs:
           pytest test_iframe.py \
             -s -v \
             -k test_automation_practice \
-            --browser-name=${{ matrix.browser }} \
+            --browser ${{ matrix.browser }} \
             --html=reports/report-${{ matrix.browser }}.html \
             --self-contained-html
         continue-on-error: false
