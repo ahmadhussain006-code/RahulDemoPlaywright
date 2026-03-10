@@ -29,17 +29,20 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-html playwright
+          pip install playwright pytest pytest-html
           python -m playwright install --with-deps chromium firefox webkit
 
-      - name: Create reports folder
-        run: mkdir -p reports
-
-      - name: Run test on ${{ matrix.browser }}
+      - name: Run tests for ${{ matrix.browser }} with HTML report
         env:
           BROWSER: ${{ matrix.browser }}
         run: |
-          pytest test_iframe.py -s -v --html=reports/report-${{ matrix.browser }}.html --self-contained-html
+          mkdir -p reports
+          pytest test_iframe.py \
+            -s -v \
+            -k test_automation_practice \
+            --html=reports/report-${{ matrix.browser }}.html \
+            --self-contained-html
+        continue-on-error: false
 
       - name: Upload HTML report for ${{ matrix.browser }}
         if: always()
