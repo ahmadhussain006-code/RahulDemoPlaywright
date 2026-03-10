@@ -29,11 +29,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install playwright pytest pytest-playwright pytest-html
           python -m playwright install --with-deps chromium firefox webkit
 
       - name: Run tests for ${{ matrix.browser }} with HTML report
         run: |
+          mkdir -p reports
           pytest test_iframe.py \
             -s -v \
             -k test_automation_practice \
