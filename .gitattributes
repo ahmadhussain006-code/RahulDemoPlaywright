@@ -1,0 +1,14 @@
+# Force Python as main language
+*.py linguist-language=Python
+
+# Hide HTML from language detection
+*.html linguist-documentation
+*.html linguist-detectable=false
+
+# Hide CSS from language detection
+*.css linguist-documentation
+*.css linguist-detectable=false
+
+# Hide JS from language detection
+*.js linguist-documentation
+*.js linguist-detectable=false

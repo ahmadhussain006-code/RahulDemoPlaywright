@@ -1,0 +1,27 @@
+# Ignore test reports
+reports/
+allure-results/
+allure-report/
+htmlcov/
+
+# Ignore web files
+*.html
+*.css
+*.js
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Ignore virtual environment
+.venv/
+venv/
+env/
+
+# Ignore IDE files
+.idea/
+.vscode/
+
+# Ignore environment variables
+.env
